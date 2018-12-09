@@ -6,5 +6,80 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:context=".Question">
+    <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" app:layout_constraintBottom_toBottomOf="parent"
+    >
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                      android:orientation="vertical">
+            <TextView
+                    android:layout_width="353dp"
+                    android:layout_height="40dp"
+                    android:id="@+id/questionTitle" app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="16dp"
+                    android:textColor="@color/title"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="16dp"
+                    app:layout_constraintHorizontal_bias="0.0" android:layout_marginTop="15dp"
+                    app:layout_constraintTop_toBottomOf="@+id/questionCreator"/>
+            <TextView
+                    android:layout_width="352dp"
+                    android:layout_height="57dp"
+                    android:id="@+id/questionDescription" app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="16dp" app:layout_constraintEnd_toEndOf="parent"
+                    android:layout_marginEnd="16dp" android:layout_marginTop="15dp"
+                    app:layout_constraintTop_toBottomOf="@+id/questionTitle"
+                    app:layout_constraintHorizontal_bias="0.0"/>
+            <TextView
+                    android:layout_width="351dp"
+                    android:layout_height="23dp"
+                    android:id="@+id/questionCreator" app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="16dp" app:layout_constraintEnd_toEndOf="parent"
+                    android:layout_marginEnd="16dp" app:layout_constraintTop_toTopOf="parent"
+                    android:layout_marginTop="15dp"/>
+            <android.support.v7.widget.RecyclerView
+                    android:layout_width="349dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    app:layout_constraintTop_toBottomOf="@+id/questionDescription"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+                    app:layout_constraintEnd_toEndOf="parent" android:id="@+id/recycler_view_answers">
+            </android.support.v7.widget.RecyclerView>
+            <EditText
+                    android:layout_width="344dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPersonName"
+                    android:ems="10"
+                    android:id="@+id/answer"
+                    app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="16dp"
+                    app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="16dp"
+                    android:hint="Your answer"
+                    android:layout_marginTop="15dp"
+                    app:layout_constraintTop_toBottomOf="@+id/recycler_view_answers"/>
+            <Button
+                    android:text="Add Answer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/answerAdd"
+                    app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="148dp"
+                    app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="148dp"
+                    style="@style/Widget.AppCompat.Button" android:backgroundTint="@color/colorPrimary"
+                    android:layout_marginTop="15dp" app:layout_constraintTop_toBottomOf="@+id/answer"/>
+            <TextView
+                    android:id="@+id/status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/signed_out"
+                    android:textColor="@android:color/black"
+                    android:textSize="14sp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginStart="159dp"
+                    app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent"
+                    android:layout_marginEnd="159dp" app:layout_constraintHorizontal_bias="1.0"
+                    android:layout_marginTop="15dp"
+                    app:layout_constraintTop_toBottomOf="@+id/answerAdd"/>
+        </LinearLayout>
+    </ScrollView>
 
 </android.support.constraint.ConstraintLayout>

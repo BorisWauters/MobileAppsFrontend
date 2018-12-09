@@ -11,4 +11,14 @@
     <string name="error_incorrect_password">This password is incorrect</string>
     <string name="error_field_required">This field is required</string>
     <string name="permission_rationale">"Contacts permissions are needed for providing email completions."</string>
+
+    <!-- Sign-in status messages -->
+    <string name="signed_in_fmt">Signed in as: %s</string>
+    <string name="signed_out">Signed out</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="sign_out">Sign Out</string>
+
+    <!-- Facebook sign in -->
+    <string name="facebook_app_id">207218110190147</string>
+    <string name="fb_login_protocol_scheme">fb207218110190147</string>
 </resources>

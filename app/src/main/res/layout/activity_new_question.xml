@@ -7,4 +7,36 @@
         android:layout_height="match_parent"
         tools:context=".NewQuestion">
 
+    <Button
+            android:text="Add Question"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/questionAddButton"
+            app:layout_constraintBottom_toBottomOf="parent" android:layout_marginBottom="85dp"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="148dp"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="148dp"
+            style="@style/Widget.AppCompat.Button" android:backgroundTint="@color/colorPrimary"
+    />
+    <EditText
+            android:layout_width="267dp"
+            android:layout_height="149dp"
+            android:inputType="textMultiLine"
+            android:ems="10"
+            android:id="@+id/questionDescriptionText"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="28dp"
+            app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="28dp"
+            android:hint="Your Question"
+            app:layout_constraintHorizontal_bias="0.508" android:layout_marginTop="157dp"
+            app:layout_constraintTop_toTopOf="parent" android:layout_marginBottom="72dp"
+            app:layout_constraintBottom_toTopOf="@+id/questionAddButton"/>
+    <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName"
+            android:text="Question Title"
+            android:ems="10"
+            android:id="@+id/questionTitleText" app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginTop="44dp" app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="85dp"
+            android:layout_marginBottom="67dp" app:layout_constraintBottom_toTopOf="@+id/questionDescriptionText"
+            app:layout_constraintStart_toStartOf="parent" android:layout_marginStart="85dp"/>
 </android.support.constraint.ConstraintLayout>
