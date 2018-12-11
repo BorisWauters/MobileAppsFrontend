@@ -43,7 +43,6 @@ import java.util.List;
 public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
 
 
-
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */

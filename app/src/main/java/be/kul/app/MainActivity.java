@@ -41,8 +41,7 @@ import org.json.JSONObject;
 
 import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity implements
-        View.OnClickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     /* Google sign in stuff*/
     private static final String TAG = "SignInActivity";
@@ -102,7 +101,8 @@ public class MainActivity extends AppCompatActivity implements
 
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        GoogleSignInOptions gso = new GoogleSignInOptions
+                .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build();
 
@@ -154,9 +154,9 @@ public class MainActivity extends AppCompatActivity implements
                                 } catch (JSONException e) {
                                     e.printStackTrace();
                                 }
-
                             }
-                        });
+                        }
+                );
 
                 Bundle parameters = new Bundle();
                 parameters.putString("fields", "first_name,last_name,email,id");
@@ -176,8 +176,6 @@ public class MainActivity extends AppCompatActivity implements
                 // App code
             }
         });
-
-
     }
 
     @Override
@@ -255,12 +253,12 @@ public class MainActivity extends AppCompatActivity implements
 
     private void sendToDashboard(String username, int id) {
         FirebaseUser user = mAuth.getCurrentUser();
-        if(user.isEmailVerified()){
+        if (user.isEmailVerified()) {
             Intent i = new Intent(this, Dashboard.class);
             UserEntity userEntity = new UserEntity(id, username, null);
             i.putExtra("UserEntity", userEntity);
             startActivity(i);
-        }else{
+        } else {
             signOut();
             LoginManager.getInstance().logOut();
             Toast.makeText(MainActivity.this, "Please verify your email!",
@@ -269,7 +267,7 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    private void sendToLogin(View v){
+    private void sendToLogin(View v) {
         Intent intent = new Intent(this, LoginActivity.class);
         startActivity(intent);
     }
@@ -372,8 +370,6 @@ public class MainActivity extends AppCompatActivity implements
 
 
     }
-
-
 
     private void registerUserOnFirebase(String email) {
         mAuth.createUserWithEmailAndPassword(email, email)

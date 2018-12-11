@@ -15,7 +15,7 @@ public class QuestionAdapter extends RecyclerView.Adapter<QuestionAdapter.MyView
     private List<QuestionEntity> questionList;
 
     public class MyViewHolder extends RecyclerView.ViewHolder {
-        public TextView title, year, genre;
+        public TextView title, year, genre, name;
 
         public MyViewHolder(View view) {
             super(view);

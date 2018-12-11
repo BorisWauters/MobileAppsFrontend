@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-
 public class Dashboard extends AppCompatActivity {
 
     private String username;
@@ -230,9 +229,6 @@ public class Dashboard extends AppCompatActivity {
                                     addNewQuestionsToRoom();
                                 }
                             });
-
-
-
 
                         } catch (JSONException e) {
                             e.printStackTrace();
