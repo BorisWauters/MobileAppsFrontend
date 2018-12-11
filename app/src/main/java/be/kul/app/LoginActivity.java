@@ -328,6 +328,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         private void sendToDashboard(String username, int id) {
             FirebaseUser user = mAuth.getCurrentUser();
             if(user.isEmailVerified()){
+                Log.d("INFO", "FireBase Email VERIFIED");
                 Intent i = new Intent(LoginActivity.this, Dashboard.class);
                 UserEntity userEntity = new UserEntity(id, username, null);
                 i.putExtra("UserEntity", userEntity);
