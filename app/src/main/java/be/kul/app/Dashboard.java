@@ -34,6 +34,15 @@ import be.kul.app.room.repositories.UserEntityRepository;
 import be.kul.app.room.viewmodels.AnswerEntityViewModel;
 import be.kul.app.room.viewmodels.QuestionEntityViewModel;
 import be.kul.app.room.viewmodels.UserEntityViewModel;
+import com.facebook.login.LoginManager;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -67,6 +76,8 @@ public class Dashboard extends AppCompatActivity {
     private UserEntityViewModel mUserEntityViewModel;
     private QuestionEntityViewModel mQuestionEntityViewModel;
     private AnswerEntityViewModel mAnswerEntityViewModel;
+
+    private GoogleApiClient mGoogleApiClient;
 
 
 
@@ -106,6 +117,14 @@ public class Dashboard extends AppCompatActivity {
             }
         });
 
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
+        mGoogleApiClient.connect();
 
 
         //facebook logout: LoginManager.getInstance().logOut();
@@ -165,6 +184,19 @@ public class Dashboard extends AppCompatActivity {
 
                         if(menuItem.getItemId() == R.id.logout){
                             // sign user out
+                            LoginManager.getInstance().logOut();
+                            Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+                                    new ResultCallback<Status>() {
+                                        @Override
+                                        public void onResult(Status status) {
+                                            // ...
+                                            Toast.makeText(getApplicationContext(),"Logged Out",Toast.LENGTH_SHORT).show();
+                                            Intent i=new Intent(getApplicationContext(),MainActivity.class);
+                                            startActivity(i);
+                                        }
+                                    });
+                            Intent intent1 = new Intent(Dashboard.this,MainActivity.class);
+                            startActivity(intent1);
                         }
                         // Add code here to update the UI based on the item selected
                         // For example, swap UI fragments here
