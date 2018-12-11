@@ -4,6 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
 import be.kul.app.callback.AnswerCallback;
+import be.kul.app.callback.AnswerDeleteCallback;
 import be.kul.app.room.model.AnswerEntity;
 import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.repositories.AnswerEntityRepository;
@@ -37,5 +38,14 @@ public class AnswerEntityViewModel extends AndroidViewModel {
             }
         });
 
+    }
+
+    public void deleteAllAnswers(final AnswerDeleteCallback answerDeleteCallback){
+        mAnswerEntityRepository.deleteAllAnswers(new AnswerDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                answerDeleteCallback.onSuccess();
+            }
+        });
     }
 }

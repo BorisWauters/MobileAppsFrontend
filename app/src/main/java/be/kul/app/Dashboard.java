@@ -21,6 +21,7 @@ import android.widget.Toast;
 import be.kul.app.adapters.QuestionAdapter;
 import be.kul.app.callback.GeneralCallbackArray;
 import be.kul.app.callback.QuestionCallback;
+import be.kul.app.callback.QuestionDeleteCallback;
 import be.kul.app.callback.UserCallback;
 import be.kul.app.room.database.RoomDatabase;
 import be.kul.app.room.model.AnswerEntity;
@@ -221,17 +222,16 @@ public class Dashboard extends AppCompatActivity {
                             UserEntity userEntity = new UserEntity(Integer.parseInt(userObject.getString("userId")), userObject.getString("username"), userObject.getString("password"));
                             QuestionEntity questionEntity = new QuestionEntity(question.getInt("questionId"), question.getString("questionTitle"),
                                     question.getString("questionDescription"), Integer.parseInt(userObject.getString("userId")), userEntity);
-                            mQuestionEntityViewModel.getQuestionById(questionEntity.getQuestionId(), new QuestionCallback() {
+                            questionList.add(questionEntity);
+
+                            mQuestionEntityViewModel.deleteAllQuestions(new QuestionDeleteCallback() {
                                 @Override
-                                public void onSuccess(QuestionEntity questionEntity) {
-                                    if(questionEntity == null){
-                                        // save each question in the room database
-                                        mQuestionEntityViewModel.insert(questionEntity);
-                                    }
+                                public void onSuccess() {
+                                    addNewQuestionsToRoom();
                                 }
                             });
 
-                            questionList.add(questionEntity);
+
 
 
                         } catch (JSONException e) {
@@ -257,5 +257,11 @@ public class Dashboard extends AppCompatActivity {
         questionList.add(new QuestionEntity(7,"test 7", "description 7", 1));
         questionList.add(new QuestionEntity(8,"test 8", "description 8", 1));*/
 
+    }
+
+    private void addNewQuestionsToRoom(){
+        for(QuestionEntity questionEntity : questionList){
+            mQuestionEntityViewModel.insert(questionEntity);
+        }
     }
 }

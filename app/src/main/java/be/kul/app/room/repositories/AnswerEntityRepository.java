@@ -5,6 +5,7 @@ import android.arch.lifecycle.LiveData;
 import android.arch.persistence.room.Dao;
 import android.os.AsyncTask;
 import be.kul.app.callback.AnswerCallback;
+import be.kul.app.callback.AnswerDeleteCallback;
 import be.kul.app.room.dao.AnswerEntityDAO;
 import be.kul.app.room.dao.QuestionEntityDAO;
 import be.kul.app.room.database.RoomDatabase;
@@ -41,6 +42,15 @@ public class AnswerEntityRepository {
         }).execute(answerId);
     }
 
+    public void deleteAllAnswers(final AnswerDeleteCallback answerDeleteCallback){
+        new AnswerEntityRepository.deleteAllAnswersAsyncTask(mAnswerEntityDAO, new AnswerDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                answerDeleteCallback.onSuccess();
+            }
+        }).execute();
+    }
+
     private static class insertAsyncTask extends AsyncTask<AnswerEntity, Void, Void> {
 
         private AnswerEntityDAO mAsyncTaskDao;
@@ -51,7 +61,12 @@ public class AnswerEntityRepository {
 
         @Override
         protected Void doInBackground(final AnswerEntity... params) {
-            mAsyncTaskDao.insert(params[0]);
+            AnswerEntity answerEntity1 = mAsyncTaskDao.getAnswerById(params[0].getAnswerId());
+            if(answerEntity1 != null){
+                mAsyncTaskDao.deleteById(params[0].getAnswerId());
+                mAsyncTaskDao.insert(params[0]);
+            }
+
             return null;
         }
     }
@@ -70,6 +85,24 @@ public class AnswerEntityRepository {
         protected Void doInBackground(final Integer... params) {
             AnswerEntity answerEntity = mAsyncTaskDao.getAnswerById(params[0]);
             answerCallback.onSuccess(answerEntity);
+            return null;
+        }
+    }
+
+    private static class deleteAllAnswersAsyncTask extends AsyncTask<Void, Void, Void> {
+
+        private AnswerEntityDAO mAsyncTaskDao;
+        private AnswerDeleteCallback answerDeleteCallback;
+
+        deleteAllAnswersAsyncTask(AnswerEntityDAO dao, final AnswerDeleteCallback answerDeleteCallback) {
+            mAsyncTaskDao = dao;
+            this.answerDeleteCallback = answerDeleteCallback;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            mAsyncTaskDao.deleteAll();
+            answerDeleteCallback.onSuccess();
             return null;
         }
     }

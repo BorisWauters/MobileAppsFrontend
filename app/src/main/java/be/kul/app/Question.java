@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import be.kul.app.adapters.AnswerAdapter;
 import be.kul.app.callback.AnswerCallback;
+import be.kul.app.callback.AnswerDeleteCallback;
 import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.GeneralCallbackArray;
 import be.kul.app.room.model.AnswerEntity;
@@ -49,6 +50,7 @@ public class Question extends AppCompatActivity {
 
     private AnswerEntityViewModel mAnswerEntityViewModel;
     private UserEntityViewModel mUserEntityViewModel;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,13 +160,10 @@ public class Question extends AppCompatActivity {
                             if(!userMap.containsKey(userEntityAnswer.getUserId())){
                                 userMap.put(userEntityAnswer.getUserId(), userEntityAnswer);
                             }
-                            mAnswerEntityViewModel.getAnswerById(answerEntity.getAnswerId(), new AnswerCallback() {
+                            mAnswerEntityViewModel.deleteAllAnswers(new AnswerDeleteCallback() {
                                 @Override
-                                public void onSuccess(AnswerEntity answerEntity) {
-                                    if(answerEntity == null){
-                                        // save the answers in the room database
-                                        mAnswerEntityViewModel.insert(answerEntity);
-                                    }
+                                public void onSuccess() {
+                                    addNewAnswersToRoom();
                                 }
                             });
 
@@ -191,5 +190,11 @@ public class Question extends AppCompatActivity {
         questionList.add(new QuestionEntity(7,"test 7", "description 7", 1));
         questionList.add(new QuestionEntity(8,"test 8", "description 8", 1));*/
 
+    }
+
+    private void addNewAnswersToRoom(){
+        for(AnswerEntity answerEntity : answerList){
+            mAnswerEntityViewModel.insert(answerEntity);
+        }
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
 import be.kul.app.callback.QuestionCallback;
+import be.kul.app.callback.QuestionDeleteCallback;
 import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.model.UserEntity;
 import be.kul.app.room.repositories.QuestionEntityRepository;
@@ -34,6 +35,15 @@ public class QuestionEntityViewModel extends AndroidViewModel {
             @Override
             public void onSuccess(QuestionEntity questionEntity) {
                 questionCallback.onSuccess(questionEntity);
+            }
+        });
+    }
+
+    public void deleteAllQuestions(final QuestionDeleteCallback questionDeleteCallback){
+        mQuestionEntityRepository.deleteAllQuestions(new QuestionDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                questionDeleteCallback.onSuccess();
             }
         });
     }

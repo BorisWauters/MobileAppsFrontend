@@ -22,4 +22,7 @@ public interface AnswerEntityDAO {
 
     @Query("SELECT * FROM answer WHERE answerId = :answerId")
     AnswerEntity getAnswerById(int answerId);
+
+    @Query("DELETE FROM answer WHERE answerId = :answerId")
+    void deleteById(int answerId);
 }
