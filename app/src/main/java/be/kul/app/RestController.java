@@ -1,12 +1,12 @@
 package be.kul.app;
 
 import android.content.Context;
-import android.os.Parcelable;
+import android.util.Log;
 import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.GeneralCallbackArray;
 import be.kul.app.callback.RegisterUserCallback;
-import be.kul.app.dao.QuestionEntity;
-import be.kul.app.dao.UserEntity;
+import be.kul.app.room.model.QuestionEntity;
+import be.kul.app.room.model.UserEntity;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -18,7 +18,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.Serializable;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class RestController {
     private Context mContext;
@@ -31,7 +34,7 @@ public class RestController {
         requestQueue = Volley.newRequestQueue(mContext);
     }
 
-    public void checkIfUserExistsVolleyRequest(String email, final GeneralCallback generalCallback){
+    public void checkIfUserExistsEmailOnly(String email, final GeneralCallback generalCallback){
 
 
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
@@ -57,6 +60,49 @@ public class RestController {
         //Add JsonObjectRequest to the RequestQueue
         requestQueue.add(jsonObjectRequest);
 
+    }
+
+    public void checkIfUserExistsEmailAndPassword(String email, String password, final GeneralCallback generalCallback) {
+
+        try{
+            MessageDigest md = MessageDigest.getInstance("SHA");
+            // Change this to UTF-16 if needed
+            md.update( password.getBytes( StandardCharsets.UTF_8 ) );
+            byte[] digest = md.digest();
+            password= String.format( "%064x", new BigInteger( 1, digest ) );
+        }catch(NoSuchAlgorithmException e){
+            e.printStackTrace();
+        }
+
+
+        JSONObject request = new JSONObject();
+        try{
+            request.put("username", email);
+            request.put("password", password);
+        }catch (JSONException e){
+            e.printStackTrace();
+        }
+        Log.d("INFO:REQUEST", request.toString());
+
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
+                Request.Method.POST,
+                "http://10.0.2.2:8080/user/name",
+                request,
+                new Response.Listener<JSONObject>() {
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        generalCallback.onSuccess(response);
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        error.printStackTrace();
+                        generalCallback.onFail();
+                    }
+                }
+        );
+        requestQueue.add(jsonObjectRequest);
     }
 
     public void registerNewUser(String email, final RegisterUserCallback registerUserCallback){
@@ -91,6 +137,59 @@ public class RestController {
         //Add JsonObjectRequest to the RequestQueue
         requestQueue.add(jsonObjectRequest);
 
+    }
+
+    public void registerNewUserEmailAndPassword(String email, String password, final GeneralCallback generalCallback){
+        try{
+            MessageDigest md = MessageDigest.getInstance("SHA");
+            // Change this to UTF-16 if needed
+            md.update( password.getBytes( StandardCharsets.UTF_8 ) );
+            byte[] digest = md.digest();
+            password= String.format( "%064x", new BigInteger( 1, digest ) );
+        }catch(NoSuchAlgorithmException e){
+
+        }
+
+        Log.d("INFO: REG", password);
+        JSONObject request = new JSONObject();
+        try{
+            request.put("username",email);
+            request.put("password", password);
+        }catch(JSONException e){
+            e.printStackTrace();
+        }
+        //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
+        //initialize JsonObjectRequest
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
+                Request.Method.POST,
+                "http://10.0.2.2:8080/user",
+                request,
+                new Response.Listener<JSONObject>() {
+
+                    String password;
+
+                    @Override
+                    public void onResponse(JSONObject response) {
+                        try{
+                            password = response.getString("password");
+                        }catch(JSONException e){
+
+                        }
+                        Log.d("INFO after REG",password);
+                        generalCallback.onSuccess(response);
+
+                    }
+                },
+                new Response.ErrorListener(){
+                    @Override
+                    public void onErrorResponse(VolleyError error){
+                        error.printStackTrace();
+                        System.out.println("Error registering user");
+                    }
+                }
+        );
+        //Add JsonObjectRequest to the RequestQueue
+        requestQueue.add(jsonObjectRequest);
     }
 
     public void addNewQuestion(String title, String description, UserEntity userEntity, final GeneralCallback generalCallback){

@@ -5,9 +5,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import be.kul.app.Question;
 import be.kul.app.R;
-import be.kul.app.dao.QuestionEntity;
+import be.kul.app.room.model.QuestionEntity;
 
 import java.util.List;
 

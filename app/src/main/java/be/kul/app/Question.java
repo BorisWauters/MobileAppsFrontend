@@ -1,5 +1,6 @@
 package be.kul.app;
 
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -13,18 +14,23 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import be.kul.app.adapters.AnswerAdapter;
-import be.kul.app.adapters.QuestionAdapter;
+import be.kul.app.callback.AnswerCallback;
 import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.GeneralCallbackArray;
-import be.kul.app.dao.AnswerEntity;
-import be.kul.app.dao.QuestionEntity;
-import be.kul.app.dao.UserEntity;
+import be.kul.app.room.model.AnswerEntity;
+import be.kul.app.room.model.QuestionEntity;
+import be.kul.app.room.model.UserEntity;
+import be.kul.app.room.repositories.UserEntityRepository;
+import be.kul.app.room.viewmodels.AnswerEntityViewModel;
+import be.kul.app.room.viewmodels.UserEntityViewModel;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Question extends AppCompatActivity {
 
@@ -37,8 +43,12 @@ public class Question extends AppCompatActivity {
     private Button addAnswer;
 
     private List<AnswerEntity> answerList = new ArrayList<>();
+    private Map<Integer, UserEntity> userMap = new HashMap<>();
     private RecyclerView recyclerView;
     private AnswerAdapter mAdapter;
+
+    private AnswerEntityViewModel mAnswerEntityViewModel;
+    private UserEntityViewModel mUserEntityViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +60,9 @@ public class Question extends AppCompatActivity {
         userEntity = (UserEntity) intent.getSerializableExtra("user");
 
         restController = new RestController(this);
+
+        mAnswerEntityViewModel = ViewModelProviders.of(this).get(AnswerEntityViewModel.class);
+        mUserEntityViewModel = ViewModelProviders.of(this).get(UserEntityViewModel.class);
 
         mStatusView = findViewById(R.id.status);
         mStatusView.setText("Question Id: " + questionEntity.getQuestionId());
@@ -65,7 +78,7 @@ public class Question extends AppCompatActivity {
         // set up recycler view to show all anwers
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view_answers);
 
-        mAdapter = new AnswerAdapter(answerList);
+        mAdapter = new AnswerAdapter(answerList,userMap);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
         recyclerView.setLayoutManager(mLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -139,9 +152,22 @@ public class Question extends AppCompatActivity {
                             UserEntity userEntityQuestion = new UserEntity(userEntityQuestionObject.getInt("userId"), userEntityQuestionObject.getString("username"),
                                     userEntityQuestionObject.getString("password"));
                             QuestionEntity questionEntity = new QuestionEntity(Integer.parseInt(questionObject.getString("questionId")),
-                                    questionObject.getString("questionTitle"), questionObject.getString("questionDescription"), userEntityQuestion.getUserId(),userEntityQuestion);
+                                    questionObject.getString("questionTitle"), questionObject.getString("questionDescription"), userEntityQuestion.getUserId(), userEntityQuestion);
                             AnswerEntity answerEntity = new AnswerEntity(answer.getInt("answerId"), answer.getString("answerDescription"), questionEntity, userEntityAnswer);
                             answerList.add(answerEntity);
+                            if(!userMap.containsKey(userEntityAnswer.getUserId())){
+                                userMap.put(userEntityAnswer.getUserId(), userEntityAnswer);
+                            }
+                            mAnswerEntityViewModel.getAnswerById(answerEntity.getAnswerId(), new AnswerCallback() {
+                                @Override
+                                public void onSuccess(AnswerEntity answerEntity) {
+                                    if(answerEntity == null){
+                                        // save the answers in the room database
+                                        mAnswerEntityViewModel.insert(answerEntity);
+                                    }
+                                }
+                            });
+
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }

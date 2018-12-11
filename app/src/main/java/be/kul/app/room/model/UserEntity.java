@@ -1,11 +1,24 @@
-package be.kul.app.dao;
+package be.kul.app.room.model;
+
+import android.arch.persistence.room.ColumnInfo;
+import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.PrimaryKey;
+import android.support.annotation.NonNull;
 
 import java.io.Serializable;
 
+@Entity(tableName = "user")
 public class UserEntity implements Serializable {
 
+    @PrimaryKey
+    @NonNull
+    @ColumnInfo(name = "userId")
     private int userId;
+
+    @ColumnInfo(name = "username")
     private String username;
+
+    @ColumnInfo(name = "password")
     private String password;
 
     public UserEntity(){}

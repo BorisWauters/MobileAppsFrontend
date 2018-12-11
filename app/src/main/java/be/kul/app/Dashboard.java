@@ -1,6 +1,11 @@
 package be.kul.app;
 
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.ViewModelProviders;
+import android.arch.persistence.db.SupportSQLiteDatabase;
 import android.content.Intent;
+import android.os.AsyncTask;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -9,18 +14,28 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import be.kul.app.adapters.QuestionAdapter;
-import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.GeneralCallbackArray;
-import be.kul.app.dao.QuestionEntity;
-import be.kul.app.dao.UserEntity;
+import be.kul.app.callback.QuestionCallback;
+import be.kul.app.callback.UserCallback;
+import be.kul.app.room.database.RoomDatabase;
+import be.kul.app.room.model.AnswerEntity;
+import be.kul.app.room.model.QuestionEntity;
+import be.kul.app.room.model.UserEntity;
 import be.kul.app.listeners.QuestionOnClickListener;
+import be.kul.app.room.repositories.AnswerEntityRepository;
+import be.kul.app.room.repositories.QuestionEntityRepository;
+import be.kul.app.room.repositories.UserEntityRepository;
+import be.kul.app.room.viewmodels.AnswerEntityViewModel;
+import be.kul.app.room.viewmodels.QuestionEntityViewModel;
+import be.kul.app.room.viewmodels.UserEntityViewModel;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+
 
 public class Dashboard extends AppCompatActivity {
 
@@ -39,7 +54,10 @@ public class Dashboard extends AppCompatActivity {
     private FloatingActionButton fab;
     private RestController restController;
 
-    private Toolbar mActionBarToolbar;
+    // Room database stuff
+    private UserEntityViewModel mUserEntityViewModel;
+    private QuestionEntityViewModel mQuestionEntityViewModel;
+    private AnswerEntityViewModel mAnswerEntityViewModel;
 
 
 
@@ -55,6 +73,22 @@ public class Dashboard extends AppCompatActivity {
         userEntity = (UserEntity)intent.getSerializableExtra("UserEntity");
 
         mStatusTextView.setText(userEntity.getUsername() + " " + userEntity.getUserId());
+
+        //Room database model initialization
+        mUserEntityViewModel = ViewModelProviders.of(this).get(UserEntityViewModel.class);
+        mQuestionEntityViewModel = ViewModelProviders.of(this).get(QuestionEntityViewModel.class);
+        mAnswerEntityViewModel = ViewModelProviders.of(this).get(AnswerEntityViewModel.class);
+
+        //save the logged in user in the room database
+        mUserEntityViewModel.getUserById(userEntity.getUserId(), new UserCallback() {
+            @Override
+            public void onSuccess(UserEntity userEntity) {
+                if(userEntity == null)
+                    mUserEntityViewModel.insert(userEntity);
+            }
+        });
+
+
 
         //facebook logout: LoginManager.getInstance().logOut();
 
@@ -100,6 +134,7 @@ public class Dashboard extends AppCompatActivity {
 
         prepareQuestionData();
     }
+
     public void sendToQuestionDetail(QuestionEntity questionEntity){
         Intent i = new Intent(this, Question.class);
         i.putExtra("question", questionEntity);
@@ -133,8 +168,21 @@ public class Dashboard extends AppCompatActivity {
                             // extract the user object from the question
                             JSONObject userObject = question.getJSONObject("userEntity");
                             UserEntity userEntity = new UserEntity(Integer.parseInt(userObject.getString("userId")), userObject.getString("username"), userObject.getString("password"));
-                            questionList.add(new QuestionEntity(question.getInt("questionId"), question.getString("questionTitle"),
-                                    question.getString("questionDescription"), Integer.parseInt(userObject.getString("userId")), userEntity));
+                            QuestionEntity questionEntity = new QuestionEntity(question.getInt("questionId"), question.getString("questionTitle"),
+                                    question.getString("questionDescription"), Integer.parseInt(userObject.getString("userId")), userEntity);
+                            mQuestionEntityViewModel.getQuestionById(questionEntity.getQuestionId(), new QuestionCallback() {
+                                @Override
+                                public void onSuccess(QuestionEntity questionEntity) {
+                                    if(questionEntity == null){
+                                        // save each question in the room database
+                                        mQuestionEntityViewModel.insert(questionEntity);
+                                    }
+                                }
+                            });
+
+                            questionList.add(questionEntity);
+
+
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }

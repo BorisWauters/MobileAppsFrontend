@@ -3,19 +3,23 @@ package be.kul.app;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.TextView;
+import android.widget.Button;
 
 /* Google sign in imports*/
+import android.widget.Toast;
 import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.RegisterUserCallback;
-import be.kul.app.dao.UserEntity;
+import be.kul.app.room.model.UserEntity;
 import com.facebook.*;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -28,11 +32,13 @@ import com.google.android.gms.tasks.Task;
 
 /* Facebook sign in imports*/
 import com.facebook.appevents.AppEventsLogger;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 
-import java.io.Serializable;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity implements
@@ -42,8 +48,9 @@ public class MainActivity extends AppCompatActivity implements
     private static final String TAG = "SignInActivity";
     private static final int RC_SIGN_IN = 9001;
 
+    private FirebaseAuth mAuth;
+
     private GoogleSignInClient mGoogleSignInClient;
-    private TextView mStatusTextView;
     // resource: https://github.com/googlesamples/google-services
 
     /* Facebook sign in stuff*/
@@ -51,50 +58,63 @@ public class MainActivity extends AppCompatActivity implements
     private static final String EMAIL = "email";
     private LoginButton loginButton;
 
+    private Button loginAndEmailButton;
+
     private Context mContext;
     private Activity mActivity;
     private boolean userExists = true;
     private RestController restController;
+
+    private boolean networkConnected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        /* FireBase */
+        mAuth = FirebaseAuth.getInstance();
+
         FacebookSdk.sdkInitialize(getApplicationContext());
         AppEventsLogger.activateApp(this);
 
-        // Views
-        mStatusTextView = findViewById(R.id.status);
+        // check if there is an internet connection available
+        networkConnected = isOnline();
 
         //app context
         mContext = getApplicationContext();
         restController = new RestController(mContext);
-        // Button listeners
+        loginAndEmailButton = findViewById(R.id.login_buttonEmail);
+
+        loginAndEmailButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendToLogin(v);
+            }
+        });
+
+
+        /* Google stuff*/
         findViewById(R.id.sign_in_button).setOnClickListener(this);
         findViewById(R.id.sign_out_button).setOnClickListener(this);
         findViewById(R.id.disconnect_button).setOnClickListener(this);
 
 
-
-        /* Google stuff*/
-        // [START configure_signin]
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build();
-        // [END configure_signin]
 
-        // [START build_client]
+
         // Build a GoogleSignInClient with the options specified by gso.
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-        // [END build_client]
+
 
         /* Facebook stuff*/
         boolean loggedOut = AccessToken.getCurrentAccessToken() == null;
         Log.d("API INFO", String.valueOf(loggedOut));
-        if(!loggedOut){
+        if (!loggedOut) {
             //Picasso.get().load(Profile.getCurrentProfile().getProfilePictureUri(200, 200)).into(imageView);
 
             Log.d("TAG", "Username is: " + Profile.getCurrentProfile().getName());
@@ -109,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements
 
         loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
             @Override
-            public void onSuccess(LoginResult loginResult) {
+            public void onSuccess(final LoginResult loginResult) {
                 // App code
                 boolean loggedIn = AccessToken.getCurrentAccessToken() == null;
 
@@ -123,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements
                                     /*String first_name = object.getString("first_name");
                                     String last_name = object.getString("last_name");*/
                                     String email = object.getString("email");
-                                    checkIfUserExistsFacebook(email);
+                                    checkIfUserExistsFacebook(email, AccessToken.getCurrentAccessToken());
                                     /*String id = object.getString("id");
                                     String image_url = "https://graph.facebook.com/" + id + "/picture?type=normal";
 
@@ -208,102 +228,191 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void checkIfUserExistsFacebook(final String email){
+    private void checkIfUserExistsFacebook(final String email, final AccessToken accessToken) {
         Log.d("INFO", "Checking facebook login");
-        restController.checkIfUserExistsVolleyRequest(email, new GeneralCallback() {
+        restController.checkIfUserExistsEmailOnly(email, new GeneralCallback() {
             @Override
             public void onSuccess(JSONObject result) {
                 try {
                     Log.d("INFO", "Successful Login on Facebook");
                     String firstName = result.getString("username");
                     int id = Integer.parseInt(result.getString("userId"));
-                    mStatusTextView.setText(firstName);
-                    sendToDashboard(firstName,id);
-                }catch(JSONException e){
+
+                    signInOnFireBase(firstName);
+                    sendToDashboard(firstName, id);
+                } catch (JSONException e) {
 
                 }
             }
 
             @Override
             public void onFail() {
+                registerUserOnFirebase(email);
                 registerNewUserFacebook(email);
             }
         });
     }
 
-    private void sendToDashboard(String username, int id){
-        Intent i = new Intent(this, Dashboard.class);
-        UserEntity userEntity = new UserEntity(id, username, null);
-        i.putExtra("UserEntity", userEntity);
-        startActivity(i);
+    private void sendToDashboard(String username, int id) {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if(user.isEmailVerified()){
+            Intent i = new Intent(this, Dashboard.class);
+            UserEntity userEntity = new UserEntity(id, username, null);
+            i.putExtra("UserEntity", userEntity);
+            startActivity(i);
+        }else{
+            signOut();
+            LoginManager.getInstance().logOut();
+            Toast.makeText(MainActivity.this, "Please verify your email!",
+                    Toast.LENGTH_LONG).show();
+        }
+
     }
 
-    private void registerNewUserFacebook(String email){
+    private void sendToLogin(View v){
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+    }
+
+    private void registerNewUserFacebook(String email) {
         restController.registerNewUser(email, new RegisterUserCallback() {
             @Override
             public void onSuccess(JSONObject result) {
                 try {
                     String firstName = result.getString("username");
                     int id = Integer.parseInt(result.getString("userId"));
-                    mStatusTextView.setText(firstName);
+
                     sendToDashboard(firstName, id);
-                }catch(JSONException e){
+                } catch (JSONException e) {
 
                 }
             }
         });
     }
 
-    private void checkIfUserExistsGoogle(final GoogleSignInAccount account){
-        restController.checkIfUserExistsVolleyRequest(account.getEmail(), new GeneralCallback() {
+    private void checkIfUserExistsGoogle(final GoogleSignInAccount account) {
+        restController.checkIfUserExistsEmailOnly(account.getEmail(), new GeneralCallback() {
             @Override
             public void onSuccess(JSONObject result) {
-                try{
+                try {
                     System.out.println("User Checked!");
                     // Get the current student (json object) data
                     String firstName = result.getString("username");
                     int id = Integer.parseInt(result.getString("userId"));
-                    mStatusTextView.setText(firstName);
+
                     // Display the formatted json data in text view
                     //mTextView.append(firstName +" " + lastName +"\nage : " + age);
                     //mTextView.append("\n\n");
                     //updateUI(account);
+                    Log.d("INFO", "Signing into firebase");
+                    signInOnFireBase(firstName);
                     sendToDashboard(firstName, id);
 
-                }catch (JSONException e){
+                } catch (JSONException e) {
                     System.out.println("Error unmarshalling parameters");
                 }
             }
 
             @Override
             public void onFail() {
+                registerUserOnFirebase(account.getEmail());
                 registerNewUserGoogle(account);
             }
         });
 
     }
 
-    private void registerNewUserGoogle(final GoogleSignInAccount account){
+    private void registerNewUserGoogle(final GoogleSignInAccount account) {
         restController.registerNewUser(account.getEmail(), new RegisterUserCallback() {
             @Override
             public void onSuccess(JSONObject result) {
-                try{
+                try {
                     // Get the current student (json object) data
                     String firstName = result.getString("username");
                     int id = Integer.parseInt(result.getString("userId"));
-                    mStatusTextView.setText(firstName + " " + id);
+
                     // Display the formatted json data in text view
                     //mTextView.append(firstName +" " + lastName +"\nage : " + age);
                     //mTextView.append("\n\n");
                     //updateUI(account);
                     sendToDashboard(firstName, id);
-                }catch (JSONException e){
+                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
         });
 
 
+    }
+
+    private void signInOnFireBase(String email) {
+
+        final boolean res;
+        mAuth.signInWithEmailAndPassword(email, email)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d(TAG, "signInWithEmail:success");
+                            FirebaseUser user = mAuth.getCurrentUser();
+
+
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w(TAG, "signInWithEmail:failure", task.getException());
+                            Toast.makeText(MainActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+
+                        }
+
+                        // ...
+                    }
+                });
+
+
+    }
+
+
+
+    private void registerUserOnFirebase(String email) {
+        mAuth.createUserWithEmailAndPassword(email, email)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            // Sign in success, update UI with the signed-in user's information
+                            Log.d(TAG, "createUserWithEmail:success");
+                            final FirebaseUser user = mAuth.getCurrentUser();
+                            user.sendEmailVerification()
+                                    .addOnCompleteListener(MainActivity.this, new OnCompleteListener() {
+                                        @Override
+                                        public void onComplete(@NonNull Task task) {
+
+                                            if (task.isSuccessful()) {
+                                                Toast.makeText(MainActivity.this,
+                                                        "Verification email sent to " + user.getEmail(),
+                                                        Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                Log.e(TAG, "sendEmailVerification", task.getException());
+                                                Toast.makeText(MainActivity.this,
+                                                        "Failed to send verification email.",
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                        }
+                                    });
+
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w(TAG, "createUserWithEmail:failure", task.getException());
+                            Toast.makeText(MainActivity.this, "Authentication failed.",
+                                    Toast.LENGTH_SHORT).show();
+
+                        }
+
+                        // ...
+                    }
+                });
     }
 
     private void signIn() {
@@ -313,13 +422,11 @@ public class MainActivity extends AppCompatActivity implements
 
     private void updateUI(@Nullable GoogleSignInAccount account) {
         if (account != null) {
-            mStatusTextView.setText(getString(R.string.signed_in_fmt, account.getDisplayName()));
-
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
-        } else {
-            mStatusTextView.setText(R.string.signed_out);
 
+        } else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
+
         }
     }
 
@@ -376,7 +483,6 @@ public class MainActivity extends AppCompatActivity implements
                             String image_url = "https://graph.facebook.com/" + id + "/picture?type=normal";
 
                             //txtUsername.setText("First Name: " + first_name + "\nLast Name: " + last_name);
-                            mStatusTextView.setText(email);
                             //Picasso.get().load(image_url).into(imageView);
 
                         } catch (JSONException e) {
@@ -391,6 +497,15 @@ public class MainActivity extends AppCompatActivity implements
         request.setParameters(parameters);
         request.executeAsync();
 
+    }
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        }
+        return false;
     }
 
 }

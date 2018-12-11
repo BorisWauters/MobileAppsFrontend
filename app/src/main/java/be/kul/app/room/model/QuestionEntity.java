@@ -1,14 +1,29 @@
-package be.kul.app.dao;
+package be.kul.app.room.model;
+
+import android.arch.persistence.room.*;
+import android.support.annotation.NonNull;
 
 import java.io.Serializable;
 
+@Entity(tableName = "question"/*,foreignKeys = @ForeignKey(entity = UserEntity.class,
+        parentColumns = "questionId",
+        childColumns = "userId")*/)
 public class QuestionEntity implements Serializable {
 
-    private String questionTitle;
+    @PrimaryKey
+    @NonNull
+    @ColumnInfo(name = "questionId")
     private int questionId;
+
+    @ColumnInfo(name = "questionTitle")
+    private String questionTitle;
+
+    @ColumnInfo(name = "questionDescription")
     private String questionDescription;
+
+    @ColumnInfo(name = "userId")
     private int userId;
-    private UserEntity userEntity;
+
 
     public QuestionEntity(){}
 
@@ -17,7 +32,6 @@ public class QuestionEntity implements Serializable {
         this.questionTitle = questionTitle;
         this.questionDescription = questionDescription;
         this.userId = userId;
-        this.userEntity = userEntity;
     }
 
     // getters and setters
@@ -53,4 +67,5 @@ public class QuestionEntity implements Serializable {
     public void setUserId(int userId) {
         this.userId = userId;
     }
+
 }

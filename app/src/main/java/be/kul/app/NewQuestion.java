@@ -7,7 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import be.kul.app.callback.GeneralCallback;
-import be.kul.app.dao.UserEntity;
+import be.kul.app.room.model.UserEntity;
 import org.json.JSONObject;
 
 public class NewQuestion extends AppCompatActivity {

@@ -3,9 +3,8 @@ package be.kul.app;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.content.pm.PackageManager;
+import android.content.Intent;
 import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
 
@@ -19,48 +18,46 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
+import android.widget.*;
+import be.kul.app.callback.GeneralCallback;
+import be.kul.app.room.model.UserEntity;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static android.Manifest.permission.READ_CONTACTS;
 
 /**
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
 
-    /**
-     * Id to identity READ_CONTACTS permission request.
-     */
-    private static final int REQUEST_READ_CONTACTS = 0;
 
-    /**
-     * A dummy authentication store containing known user names and passwords.
-     * TODO: remove after connecting to a real authentication system.
-     */
-    private static final String[] DUMMY_CREDENTIALS = new String[]{
-            "foo@example.com:hello", "bar@example.com:world"
-    };
+
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
+
+    private FirebaseAuth mAuth;
 
     // UI references.
     private AutoCompleteTextView mEmailView;
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+
+    private RestController restController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,10 +66,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 
         // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
-        populateAutoComplete();
+        mEmailView = findViewById(R.id.email);
 
-        mPasswordView = (EditText) findViewById(R.id.password);
+        mPasswordView = findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -84,7 +80,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
+        Button mEmailSignInButton =  findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -94,50 +90,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        mAuth = FirebaseAuth.getInstance();
     }
 
-    private void populateAutoComplete() {
-        if (!mayRequestContacts()) {
-            return;
-        }
 
-        getLoaderManager().initLoader(0, null, this);
-    }
-
-    private boolean mayRequestContacts() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return true;
-        }
-        if (checkSelfPermission(READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            return true;
-        }
-        if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(mEmailView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
-                    .setAction(android.R.string.ok, new View.OnClickListener() {
-                        @Override
-                        @TargetApi(Build.VERSION_CODES.M)
-                        public void onClick(View v) {
-                            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
-                        }
-                    });
-        } else {
-            requestPermissions(new String[]{READ_CONTACTS}, REQUEST_READ_CONTACTS);
-        }
-        return false;
-    }
-
-    /**
-     * Callback received when a permissions request has been completed.
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_READ_CONTACTS) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                populateAutoComplete();
-            }
-        }
-    }
 
 
     /**
@@ -193,13 +150,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     }
 
     private boolean isEmailValid(String email) {
-        //TODO: Replace this with your own logic
         return email.contains("@");
     }
 
     private boolean isPasswordValid(String password) {
-        //TODO: Replace this with your own logic
-        return password.length() > 4;
+        return password.length() > 6;
     }
 
     /**
@@ -308,25 +263,145 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
-
-            try {
-                // Simulate network access.
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                return false;
-            }
-
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
+            restController = new RestController(LoginActivity.this);
+            restController.checkIfUserExistsEmailOnly(mEmail, new GeneralCallback() {
+                @Override
+                public void onSuccess(JSONObject result) {
+                    checkOnEmailAndPassWord(result);
                 }
+
+                @Override
+                public void onFail() {
+                    restController.registerNewUserEmailAndPassword(mEmail, mPassword, new GeneralCallback() {
+                        @Override
+                        public void onSuccess(JSONObject result) {
+                            String username = null;
+                            try{
+                                username = result.getString("username");
+                            }catch(JSONException e){
+
+                            }
+                            registerUserOnFireBase(username);
+                        }
+
+                        @Override
+                        public void onFail() {
+                            Toast.makeText(LoginActivity.this, "Something went wrong, try again later",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            });
+
+
+
+
+
+            return true;
+        }
+
+        private void checkOnEmailAndPassWord(JSONObject result){
+            restController = new RestController(LoginActivity.this);
+            restController.checkIfUserExistsEmailAndPassword(mEmail, mPassword, new GeneralCallback() {
+                @Override
+                public void onSuccess(JSONObject result) {
+                    String username = null;
+                    int userId = 0;
+                    try{
+                        username = result.getString("username");
+                        userId =  result.getInt("userId");
+                    }catch(JSONException e){
+
+                    }
+                    signInOnFireBase(username);
+                    sendToDashboard(username, userId);
+                }
+
+                @Override
+                public void onFail() {
+                    Toast.makeText(LoginActivity.this, "Credentials incorrect",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        private void sendToDashboard(String username, int id) {
+            FirebaseUser user = mAuth.getCurrentUser();
+            if(user.isEmailVerified()){
+                Intent i = new Intent(LoginActivity.this, Dashboard.class);
+                UserEntity userEntity = new UserEntity(id, username, null);
+                i.putExtra("UserEntity", userEntity);
+                startActivity(i);
+            }else{
+                Toast.makeText(LoginActivity.this, "Please verify your email!",
+                        Toast.LENGTH_LONG).show();
             }
 
-            // TODO: register the new account here.
-            return true;
+        }
+
+        private void signInOnFireBase(String email) {
+
+            mAuth.signInWithEmailAndPassword(email, email)
+                    .addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
+                                // Sign in success, update UI with the signed-in user's information
+                                Log.d("INFO", "signInWithEmail:success");
+
+
+                            } else {
+                                // If sign in fails, display a message to the user.
+                                Log.w("INFO", "signInWithEmail:failure", task.getException());
+                                Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                        Toast.LENGTH_SHORT).show();
+
+                            }
+
+                            // ...
+                        }
+                    });
+
+
+        }
+        private void registerUserOnFireBase(String email) {
+            mAuth.createUserWithEmailAndPassword(email, email)
+                    .addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
+                                // Sign in success, update UI with the signed-in user's information
+                                Log.d("INFO", "createUserWithEmail:success");
+                                final FirebaseUser user = mAuth.getCurrentUser();
+                                user.sendEmailVerification()
+                                        .addOnCompleteListener(LoginActivity.this, new OnCompleteListener() {
+                                            @Override
+                                            public void onComplete(@NonNull Task task) {
+
+                                                if (task.isSuccessful()) {
+                                                    Toast.makeText(LoginActivity.this,
+                                                            "Verification email sent to " + user.getEmail(),
+                                                            Toast.LENGTH_SHORT).show();
+                                                } else {
+                                                    Log.e("INFO", "sendEmailVerification", task.getException());
+                                                    Toast.makeText(LoginActivity.this,
+                                                            "Failed to send verification email.",
+                                                            Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
+
+                            } else {
+                                // If sign in fails, display a message to the user.
+                                Log.w("INFO", "createUserWithEmail:failure", task.getException());
+                                Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                        Toast.LENGTH_SHORT).show();
+
+                            }
+
+                            // ...
+                        }
+                    });
         }
 
         @Override
