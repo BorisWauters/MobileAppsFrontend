@@ -4,6 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.LiveData;
 import android.arch.persistence.room.Dao;
 import android.os.AsyncTask;
+import be.kul.app.callback.AllAnswersCallback;
 import be.kul.app.callback.AnswerCallback;
 import be.kul.app.callback.AnswerDeleteCallback;
 import be.kul.app.room.dao.AnswerEntityDAO;
@@ -51,6 +52,15 @@ public class AnswerEntityRepository {
         }).execute();
     }
 
+    public void getAllAnswersAsList(final AllAnswersCallback allAnswersCallback){
+        new AnswerEntityRepository.getAllAnswersAsListAsyncTask(mAnswerEntityDAO, new AllAnswersCallback() {
+            @Override
+            public void onSuccess(List<AnswerEntity> answers) {
+                allAnswersCallback.onSuccess(answers);
+            }
+        }).execute();
+    }
+
     private static class insertAsyncTask extends AsyncTask<AnswerEntity, Void, Void> {
 
         private AnswerEntityDAO mAsyncTaskDao;
@@ -65,7 +75,8 @@ public class AnswerEntityRepository {
             if(answerEntity1 != null){
                 mAsyncTaskDao.deleteById(params[0].getAnswerId());
                 mAsyncTaskDao.insert(params[0]);
-            }
+            }else
+                mAsyncTaskDao.insert(params[0]);
 
             return null;
         }
@@ -103,6 +114,24 @@ public class AnswerEntityRepository {
         protected Void doInBackground(Void... params) {
             mAsyncTaskDao.deleteAll();
             answerDeleteCallback.onSuccess();
+            return null;
+        }
+    }
+
+    private static class getAllAnswersAsListAsyncTask extends AsyncTask<Void, Void, Void> {
+
+        private AnswerEntityDAO mAsyncTaskDao;
+        private AllAnswersCallback allAnswersCallback;
+
+        getAllAnswersAsListAsyncTask(AnswerEntityDAO dao, final AllAnswersCallback allAnswersCallback) {
+            mAsyncTaskDao = dao;
+            this.allAnswersCallback = allAnswersCallback;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+
+            allAnswersCallback.onSuccess( mAsyncTaskDao.getAllAnswersAsList());
             return null;
         }
     }

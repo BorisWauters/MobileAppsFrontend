@@ -4,6 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.LiveData;
 import android.os.AsyncTask;
 import be.kul.app.Question;
+import be.kul.app.callback.AllQuestionsCallback;
 import be.kul.app.callback.GeneralCallback;
 import be.kul.app.callback.QuestionCallback;
 import be.kul.app.callback.QuestionDeleteCallback;
@@ -14,6 +15,7 @@ import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.model.UserEntity;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class QuestionEntityRepository {
@@ -29,6 +31,15 @@ public class QuestionEntityRepository {
 
     public LiveData<List<QuestionEntity>> getAllQuestions() {
         return mAllQuestions;
+    }
+
+    public void getAllQuestionsAsList(final AllQuestionsCallback allQuestionsCallback){
+        new QuestionEntityRepository.getAllQuestionsAsListAsyncTask(mQuestionEntityDAO, new AllQuestionsCallback() {
+            @Override
+            public void onSuccess(List<QuestionEntity> questions) {
+                allQuestionsCallback.onSuccess(questions);
+            }
+        }).execute();
     }
 
     public void insert (QuestionEntity questionEntity) {
@@ -49,7 +60,7 @@ public class QuestionEntityRepository {
         new QuestionEntityRepository.deleteAllQuestionsAsyncTask(mQuestionEntityDAO, new QuestionDeleteCallback() {
             @Override
             public void onSuccess() {
-
+                questionDeleteCallback.onSuccess();
             }
         }).execute();
     }
@@ -100,6 +111,23 @@ public class QuestionEntityRepository {
         protected Void doInBackground(Void... params) {
             mAsyncTaskDao.deleteAll();
             questionDeleteCallback.onSuccess();
+            return null;
+        }
+
+    }
+
+    private static class getAllQuestionsAsListAsyncTask extends AsyncTask<Void, Void, Void>{
+        private QuestionEntityDAO mAsyncTaskDao;
+        private AllQuestionsCallback allQuestionsCallback;
+
+        getAllQuestionsAsListAsyncTask(QuestionEntityDAO dao, AllQuestionsCallback allQuestionsCallback){
+            mAsyncTaskDao = dao;
+            this.allQuestionsCallback= allQuestionsCallback;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            allQuestionsCallback.onSuccess(mAsyncTaskDao.getAllQuestionsAsList());
             return null;
         }
 

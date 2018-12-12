@@ -1,7 +1,10 @@
 package be.kul.app;
 
 import android.arch.lifecycle.ViewModelProviders;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,24 +17,17 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import be.kul.app.adapters.AnswerAdapter;
-import be.kul.app.callback.AnswerCallback;
-import be.kul.app.callback.AnswerDeleteCallback;
-import be.kul.app.callback.GeneralCallback;
-import be.kul.app.callback.GeneralCallbackArray;
+import be.kul.app.callback.*;
 import be.kul.app.room.model.AnswerEntity;
 import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.model.UserEntity;
-import be.kul.app.room.repositories.UserEntityRepository;
 import be.kul.app.room.viewmodels.AnswerEntityViewModel;
 import be.kul.app.room.viewmodels.UserEntityViewModel;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Question extends AppCompatActivity {
 
@@ -51,6 +47,8 @@ public class Question extends AppCompatActivity {
     private AnswerEntityViewModel mAnswerEntityViewModel;
     private UserEntityViewModel mUserEntityViewModel;
 
+    private boolean networkConnection;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +58,8 @@ public class Question extends AppCompatActivity {
         Intent intent = getIntent();
         questionEntity =(QuestionEntity)intent.getSerializableExtra("question");
         userEntity = (UserEntity) intent.getSerializableExtra("user");
+
+        networkConnection = isOnline();
 
         restController = new RestController(this);
 
@@ -88,7 +88,29 @@ public class Question extends AppCompatActivity {
 
         recyclerView.setAdapter(mAdapter);
 
-        prepareAnswerData();
+        if(networkConnection)
+            prepareAnswerDataWithInternet();
+        else{
+            // if no internet connection, no answers can be added
+            addAnswer.setVisibility(View.GONE);
+            answer.setVisibility(View.GONE);
+            Snackbar.make(findViewById(android.R.id.content), "There is no internet connection!", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show();
+            prepareAnswerDataWithoutInternet(new AnswerDeleteCallback() {
+                @Override
+                public void onSuccess() {
+                    runOnUiThread(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            // Stuff that updates the UI
+                            mAdapter.notifyDataSetChanged();
+                        }
+                    });
+                }
+            });
+        }
+
 
         addAnswer.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -128,7 +150,7 @@ public class Question extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void prepareAnswerData(){
+    private void prepareAnswerDataWithInternet(){
 
         restController.requestAnswers(questionEntity.getQuestionId(), new GeneralCallbackArray() {
             @Override
@@ -160,17 +182,13 @@ public class Question extends AppCompatActivity {
                             if(!userMap.containsKey(userEntityAnswer.getUserId())){
                                 userMap.put(userEntityAnswer.getUserId(), userEntityAnswer);
                             }
-                            mAnswerEntityViewModel.deleteAllAnswers(new AnswerDeleteCallback() {
-                                @Override
-                                public void onSuccess() {
-                                    addNewAnswersToRoom();
-                                }
-                            });
 
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
                     }
+                    addNewAnswersToRoom();
+                    addUsersToRoom();
                     mAdapter.notifyDataSetChanged();
                 }
 
@@ -192,9 +210,67 @@ public class Question extends AppCompatActivity {
 
     }
 
+    private void prepareAnswerDataWithoutInternet(final AnswerDeleteCallback answerDeleteCallback){
+        mAnswerEntityViewModel.getAllAnswersAsList(new AllAnswersCallback() {
+            @Override
+            public void onSuccess(List<AnswerEntity> answers) {
+                answerList.clear();
+                for(AnswerEntity a : answers){
+                    if(a.getQuestionId() == questionEntity.getQuestionId())
+                        answerList.add(a);
+                }
+                answerDeleteCallback.onSuccess();
+            }
+        });
+
+        mUserEntityViewModel.getAllUsersAsList(new AllUsersCallback() {
+            @Override
+            public void onSuccess(List<UserEntity> users) {
+                for(UserEntity userEntity : users){
+                    userMap.put(userEntity.getUserId(), userEntity);
+                }
+            }
+        });
+    }
+
     private void addNewAnswersToRoom(){
-        for(AnswerEntity answerEntity : answerList){
-            mAnswerEntityViewModel.insert(answerEntity);
+        mAnswerEntityViewModel.getAllAnswersAsList(new AllAnswersCallback() {
+            @Override
+            public void onSuccess(List<AnswerEntity> answers) {
+                Set<Integer> currentAnswers = new HashSet<>();
+                for(AnswerEntity a : answers)
+                    currentAnswers.add(a.getAnswerId());
+                for(AnswerEntity answerEntity : answerList){
+                    if(!currentAnswers.contains(answerEntity.getAnswerId()))
+                        mAnswerEntityViewModel.insert(answerEntity);
+                }
+            }
+        });
+
+    }
+
+    private void addUsersToRoom(){
+        mUserEntityViewModel.getAllUsersAsList(new AllUsersCallback() {
+            @Override
+            public void onSuccess(List<UserEntity> users) {
+                Set<Integer> currentUserIds = new HashSet<>();
+                for(UserEntity u : users){
+                    currentUserIds.add(u.getUserId());
+                }
+                for(Map.Entry<Integer, UserEntity> entry : userMap.entrySet()){
+                    if(!currentUserIds.contains(entry.getKey()))
+                        mUserEntityViewModel.insert(entry.getValue());
+                }
+            }
+        });
+    }
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
         }
+        return false;
     }
 }

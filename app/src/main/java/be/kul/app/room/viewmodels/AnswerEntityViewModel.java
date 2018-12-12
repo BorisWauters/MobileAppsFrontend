@@ -3,6 +3,7 @@ package be.kul.app.room.viewmodels;
 import android.app.Application;
 import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
+import be.kul.app.callback.AllAnswersCallback;
 import be.kul.app.callback.AnswerCallback;
 import be.kul.app.callback.AnswerDeleteCallback;
 import be.kul.app.room.model.AnswerEntity;
@@ -45,6 +46,15 @@ public class AnswerEntityViewModel extends AndroidViewModel {
             @Override
             public void onSuccess() {
                 answerDeleteCallback.onSuccess();
+            }
+        });
+    }
+
+    public void getAllAnswersAsList(final AllAnswersCallback allAnswersCallback){
+        mAnswerEntityRepository.getAllAnswersAsList(new AllAnswersCallback() {
+            @Override
+            public void onSuccess(List<AnswerEntity> answers) {
+                allAnswersCallback.onSuccess(answers);
             }
         });
     }

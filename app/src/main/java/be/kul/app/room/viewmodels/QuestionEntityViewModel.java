@@ -3,6 +3,7 @@ package be.kul.app.room.viewmodels;
 import android.app.Application;
 import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
+import be.kul.app.callback.AllQuestionsCallback;
 import be.kul.app.callback.QuestionCallback;
 import be.kul.app.callback.QuestionDeleteCallback;
 import be.kul.app.room.model.QuestionEntity;
@@ -10,6 +11,7 @@ import be.kul.app.room.model.UserEntity;
 import be.kul.app.room.repositories.QuestionEntityRepository;
 import be.kul.app.room.repositories.UserEntityRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class QuestionEntityViewModel extends AndroidViewModel {
@@ -26,7 +28,7 @@ public class QuestionEntityViewModel extends AndroidViewModel {
         mAllQuestions = mQuestionEntityRepository.getAllQuestions();
     }
 
-    LiveData<List<QuestionEntity>> getAllUsers(){ return mAllQuestions;}
+    public LiveData<List<QuestionEntity>> getAllQuestions(){ return mAllQuestions;}
 
     public void insert(QuestionEntity questionEntity){ mQuestionEntityRepository.insert(questionEntity);}
 
@@ -44,6 +46,15 @@ public class QuestionEntityViewModel extends AndroidViewModel {
             @Override
             public void onSuccess() {
                 questionDeleteCallback.onSuccess();
+            }
+        });
+    }
+
+    public void getAllQuestionsAsList(final AllQuestionsCallback allQuestionsCallback){
+        mQuestionEntityRepository.getAllQuestionsAsList(new AllQuestionsCallback() {
+            @Override
+            public void onSuccess(List<QuestionEntity> questions) {
+                allQuestionsCallback.onSuccess(questions);
             }
         });
     }

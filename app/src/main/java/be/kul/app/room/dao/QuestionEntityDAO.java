@@ -7,6 +7,7 @@ import android.arch.persistence.room.Query;
 import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.model.UserEntity;
 
+import java.util.ArrayList;
 import java.util.List;
 @Dao
 public interface QuestionEntityDAO {
@@ -21,4 +22,7 @@ public interface QuestionEntityDAO {
 
     @Query("SELECT * FROM question  WHERE questionId = :questionId")
     QuestionEntity getQuestionById(int questionId);
+
+    @Query("SELECT * FROM question ORDER BY questionId ASC")
+    List<QuestionEntity> getAllQuestionsAsList();
 }

@@ -88,7 +88,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         loginAndEmailButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 sendToLogin(v);
+
             }
         });
 
@@ -174,6 +176,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 // App code
             }
         });
+
+        // if not internet connection, disable google and facebook login
+        if(!networkConnected){
+            findViewById(R.id.login_button).setVisibility(View.GONE);
+            findViewById(R.id.sign_in_button).setVisibility(View.GONE);
+        }
+
+
     }
 
     @Override
