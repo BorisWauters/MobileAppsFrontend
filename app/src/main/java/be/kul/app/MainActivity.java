@@ -1,6 +1,9 @@
 package be.kul.app;
 
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +13,7 @@ import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -97,6 +101,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -125,6 +130,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             }
         });
+
+
+
+        startService(new Intent(this, ShakeService.class));
+
+
 
 
         /* Google stuff*/
@@ -228,6 +239,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         //updateUI(account);
         // [END on_start_sign_in]
+    }
+
+    @Override
+    public void onStop(){
+        super.onStop();
+        //startService(new Intent(this, ShakeService.class));
+
     }
 
     @Override
@@ -553,6 +571,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         return false;
     }
+
 
 
 }
