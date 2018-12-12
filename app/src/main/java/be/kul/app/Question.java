@@ -2,17 +2,20 @@ package be.kul.app;
 
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
+import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.DefaultItemAnimator;
-import android.support.v7.widget.DividerItemDecoration;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.*;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import be.kul.app.adapters.AnswerAdapter;
 import be.kul.app.callback.AnswerCallback;
 import be.kul.app.callback.AnswerDeleteCallback;
@@ -24,6 +27,12 @@ import be.kul.app.room.model.UserEntity;
 import be.kul.app.room.repositories.UserEntityRepository;
 import be.kul.app.room.viewmodels.AnswerEntityViewModel;
 import be.kul.app.room.viewmodels.UserEntityViewModel;
+import com.facebook.login.LoginManager;
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,6 +60,11 @@ public class Question extends AppCompatActivity {
     private AnswerEntityViewModel mAnswerEntityViewModel;
     private UserEntityViewModel mUserEntityViewModel;
 
+    private GoogleApiClient mGoogleApiClient;
+
+    // hamburger menu stuff
+    private DrawerLayout mDrawerLayout;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +74,18 @@ public class Question extends AppCompatActivity {
         Intent intent = getIntent();
         questionEntity =(QuestionEntity)intent.getSerializableExtra("question");
         userEntity = (UserEntity) intent.getSerializableExtra("user");
+
+        //Voor menu
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        //Voor menu
+        ActionBar actionbar = getSupportActionBar();
+        actionbar.setDisplayHomeAsUpEnabled(true);
+        actionbar.setHomeAsUpIndicator(R.drawable.baseline_menu_white_18dp);
+
+        // menu
+        mDrawerLayout = findViewById(R.id.drawer_layout);
 
         restController = new RestController(this);
 
@@ -104,6 +130,60 @@ public class Question extends AppCompatActivity {
 
 
 
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
+                .build();
+        mGoogleApiClient.connect();
+
+        // add callback to hamburger menu
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(
+                new NavigationView.OnNavigationItemSelectedListener() {
+                    @Override
+                    public boolean onNavigationItemSelected(MenuItem menuItem) {
+                        // set item as selected to persist highlight
+                        menuItem.setChecked(true);
+                        // close drawer when item is tapped
+                        mDrawerLayout.closeDrawers();
+
+                        if(menuItem.getItemId() == R.id.logout){
+                            // sign user out
+                            LoginManager.getInstance().logOut();
+                            Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+                                    new ResultCallback<Status>() {
+                                        @Override
+                                        public void onResult(Status status) {
+                                            // ...
+                                            Toast.makeText(getApplicationContext(),"Logged Out",Toast.LENGTH_SHORT).show();
+                                            Intent i=new Intent(getApplicationContext(),MainActivity.class);
+                                            startActivity(i);
+                                        }
+                                    });
+                            Intent intent1 = new Intent(Question.this,MainActivity.class);
+                            startActivity(intent1);
+                        }
+                        // Add code here to update the UI based on the item selected
+                        // For example, swap UI fragments here
+
+                        return true;
+                    }
+                });
+
+
+
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                mDrawerLayout.openDrawer(GravityCompat.START);
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void submitAnswer(String answer){
