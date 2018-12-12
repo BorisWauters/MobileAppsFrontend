@@ -95,8 +95,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         /* Google stuff*/
         findViewById(R.id.sign_in_button).setOnClickListener(this);
-        findViewById(R.id.sign_out_button).setOnClickListener(this);
-        findViewById(R.id.disconnect_button).setOnClickListener(this);
 
 
         // Configure sign-in to request the user's ID, email address, and basic
