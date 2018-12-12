@@ -31,7 +31,8 @@ public class UserEntityViewModel extends AndroidViewModel {
 
     LiveData<List<UserEntity>> getAllUsers(){ return mAllUsers;}
 
-    public void insert(UserEntity userEntity){ mUserEntityRepository.insert(userEntity);}
+    public void insert(UserEntity userEntity){
+        mUserEntityRepository.insert(userEntity);}
 
     public void getUserById(int userId, final UserCallback userCallback){
         mUserEntityRepository.getUserById(userId, new UserCallback() {

@@ -1,10 +1,13 @@
 package be.kul.app;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -65,11 +68,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private RestController restController;
 
     private boolean networkConnected = false;
+    private boolean isReceiverRegistered = false;
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            NetworkInfo info = getNetworkInfo(context);
+            if (info != null && info.isConnected()) {
+                // Code to execute if wifi connected
+                findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
+                findViewById(R.id.login_button).setVisibility(View.VISIBLE);
+            } else {
+                // Code to execute if wifi disconnected
+                findViewById(R.id.sign_in_button).setVisibility(View.GONE);
+                findViewById(R.id.login_button).setVisibility(View.GONE);
+            }
+        }
+    };
+
+    private NetworkInfo getNetworkInfo(Context context) {
+        ConnectivityManager connManager = (ConnectivityManager)
+                context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        return connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
 
         /* FireBase */
         mAuth = FirebaseAuth.getInstance();
@@ -196,6 +222,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         //updateUI(account);
         // [END on_start_sign_in]
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!isReceiverRegistered) {
+            isReceiverRegistered = true;
+            registerReceiver(receiver, new IntentFilter("android.net.wifi.STATE_CHANGE")); // IntentFilter to wifi state change is "android.net.wifi.STATE_CHANGE"
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isReceiverRegistered) {
+            isReceiverRegistered = false;
+            unregisterReceiver(receiver);
+        }
     }
 
     // [START onActivityResult]
@@ -503,5 +547,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         return false;
     }
+
 
 }

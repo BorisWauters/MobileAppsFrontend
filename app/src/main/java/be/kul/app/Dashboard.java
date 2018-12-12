@@ -108,8 +108,8 @@ public class Dashboard extends AppCompatActivity {
         //save the logged in user in the room database
         mUserEntityViewModel.getUserByName(userEntity.getUsername(), new UserCallback() {
             @Override
-            public void onSuccess(UserEntity userEntity) {
-                if(userEntity == null)
+            public void onSuccess(UserEntity userEntity1) {
+                if(userEntity1 == null)
                     mUserEntityViewModel.insert(userEntity);
             }
         });
