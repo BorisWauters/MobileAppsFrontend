@@ -1,13 +1,13 @@
 package be.kul.app;
 
-import android.arch.lifecycle.LiveData;
 import android.arch.lifecycle.ViewModelProviders;
-import android.arch.persistence.db.SupportSQLiteDatabase;
+import android.content.Context;
 import android.content.Intent;
-import android.os.AsyncTask;
-import android.support.annotation.NonNull;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
@@ -19,30 +19,22 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import be.kul.app.adapters.QuestionAdapter;
+import be.kul.app.callback.AllQuestionsCallback;
 import be.kul.app.callback.GeneralCallbackArray;
-import be.kul.app.callback.QuestionCallback;
 import be.kul.app.callback.QuestionDeleteCallback;
 import be.kul.app.callback.UserCallback;
-import be.kul.app.room.database.RoomDatabase;
-import be.kul.app.room.model.AnswerEntity;
 import be.kul.app.room.model.QuestionEntity;
 import be.kul.app.room.model.UserEntity;
 import be.kul.app.listeners.QuestionOnClickListener;
-import be.kul.app.room.repositories.AnswerEntityRepository;
-import be.kul.app.room.repositories.QuestionEntityRepository;
-import be.kul.app.room.repositories.UserEntityRepository;
 import be.kul.app.room.viewmodels.AnswerEntityViewModel;
 import be.kul.app.room.viewmodels.QuestionEntityViewModel;
 import be.kul.app.room.viewmodels.UserEntityViewModel;
 import com.facebook.login.LoginManager;
 import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -79,6 +71,8 @@ public class Dashboard extends AppCompatActivity {
 
     private GoogleApiClient mGoogleApiClient;
 
+    private boolean networkConnection;
+
 
 
     @Override
@@ -97,6 +91,9 @@ public class Dashboard extends AppCompatActivity {
 
         mDrawerLayout = findViewById(R.id.drawer_layout);
 
+        // check for network connection
+        networkConnection = isOnline();
+
         /* extract intent info*/
         Intent intent = getIntent();
         userEntity = (UserEntity)intent.getSerializableExtra("UserEntity");
@@ -109,13 +106,15 @@ public class Dashboard extends AppCompatActivity {
         mAnswerEntityViewModel = ViewModelProviders.of(this).get(AnswerEntityViewModel.class);
 
         //save the logged in user in the room database
-        mUserEntityViewModel.getUserById(userEntity.getUserId(), new UserCallback() {
+        mUserEntityViewModel.getUserByName(userEntity.getUsername(), new UserCallback() {
             @Override
             public void onSuccess(UserEntity userEntity) {
                 if(userEntity == null)
                     mUserEntityViewModel.insert(userEntity);
             }
         });
+
+
 
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -145,7 +144,7 @@ public class Dashboard extends AppCompatActivity {
 
 
         // recycler view source: https://www.androidhive.info/2016/01/android-working-with-recycler-view/
-        // set up recycler view to sho all questions
+        // set up recycler view to show all questions
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 
         mAdapter = new QuestionAdapter(questionList);
@@ -169,7 +168,29 @@ public class Dashboard extends AppCompatActivity {
         }));
         recyclerView.setAdapter(mAdapter);
 
-        prepareQuestionData();
+        if(networkConnection)
+            prepareQuestionDataWithInternet();
+        else{
+            // if no internet connection, no questions can be added
+            fab.setVisibility(View.GONE);
+            Snackbar.make(findViewById(android.R.id.content), "There is no internet connection!", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show();
+            prepareQuestionDataWithoutInternet(new QuestionDeleteCallback() {
+                @Override
+                public void onSuccess() {
+                    runOnUiThread(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            // Stuff that updates the UI
+                            mAdapter.notifyDataSetChanged();
+                        }
+                    });
+
+                }
+            });
+        }
+
 
         // add callback to hamburger menu
         NavigationView navigationView = findViewById(R.id.nav_view);
@@ -231,7 +252,7 @@ public class Dashboard extends AppCompatActivity {
         startActivity(i);
     }
 
-    private void prepareQuestionData(){
+    private void prepareQuestionDataWithInternet(){
         restController = new RestController(this);
         restController.requestQuestions(new GeneralCallbackArray() {
             @Override
@@ -255,17 +276,12 @@ public class Dashboard extends AppCompatActivity {
                                     question.getString("questionDescription"), Integer.parseInt(userObject.getString("userId")), userEntity);
                             questionList.add(questionEntity);
 
-                            mQuestionEntityViewModel.deleteAllQuestions(new QuestionDeleteCallback() {
-                                @Override
-                                public void onSuccess() {
-                                    addNewQuestionsToRoom();
-                                }
-                            });
 
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
                     }
+                    addNewQuestionsToRoom();
                     mAdapter.notifyDataSetChanged();
                 }
 
@@ -276,20 +292,42 @@ public class Dashboard extends AppCompatActivity {
 
             }
         });
-       /* questionList.add(new QuestionEntity(1,"test 1", "description 1", 1));
-        questionList.add(new QuestionEntity(2,"test 2", "description 2", 1));
-        questionList.add(new QuestionEntity(3,"test 3", "description 3", 1));
-        questionList.add(new QuestionEntity(4,"test 4", "description 4", 1));
-        questionList.add(new QuestionEntity(5,"test 5", "description 5", 1));
-        questionList.add(new QuestionEntity(6,"test 6", "description 6", 1));
-        questionList.add(new QuestionEntity(7,"test 7", "description 7", 1));
-        questionList.add(new QuestionEntity(8,"test 8", "description 8", 1));*/
 
     }
+
+    public void prepareQuestionDataWithoutInternet(final QuestionDeleteCallback questionDeleteCallback){
+        mQuestionEntityViewModel.getAllQuestionsAsList(new AllQuestionsCallback() {
+            @Override
+            public void onSuccess(List<QuestionEntity> questions) {
+                questionList.clear();
+                questionList.addAll(questions);
+                questionDeleteCallback.onSuccess();
+            }
+        });
+    }
+
 
     private void addNewQuestionsToRoom(){
-        for(QuestionEntity questionEntity : questionList){
-            mQuestionEntityViewModel.insert(questionEntity);
-        }
+        // first delete previous saved questions
+        mQuestionEntityViewModel.deleteAllQuestions(new QuestionDeleteCallback() {
+            @Override
+            public void onSuccess() {
+                for(QuestionEntity questionEntity : questionList){
+                    mQuestionEntityViewModel.insert(questionEntity);
+                }
+
+            }
+        });
+
     }
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        }
+        return false;
+    }
+
 }

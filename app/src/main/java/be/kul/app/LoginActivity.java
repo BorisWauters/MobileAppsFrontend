@@ -3,7 +3,11 @@ package be.kul.app;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.arch.lifecycle.ViewModelProviders;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
@@ -24,8 +28,12 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
 import android.widget.*;
+import be.kul.app.callback.AllUsersCallback;
 import be.kul.app.callback.GeneralCallback;
+import be.kul.app.callback.UserCallback;
 import be.kul.app.room.model.UserEntity;
+import be.kul.app.room.repositories.UserEntityRepository;
+import be.kul.app.room.viewmodels.UserEntityViewModel;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
@@ -34,6 +42,10 @@ import com.google.firebase.auth.FirebaseUser;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +59,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
+    private UserLoginTaskWithoutInternet mAuthTaskWithoutInternet = null;
 
     private FirebaseAuth mAuth;
 
@@ -58,14 +71,23 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private RestController restController;
 
+    private boolean networkConnection;
+
+    private UserEntityViewModel mUserEntityViewModel;
+
+    private List<UserEntity> currentUsers;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        networkConnection = isOnline();
 
         // Set up the login form.
         mEmailView = findViewById(R.id.email);
+
+        mUserEntityViewModel = ViewModelProviders.of(this).get(UserEntityViewModel.class);
 
         mPasswordView = findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -79,11 +101,21 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
+        // get all current users
+        mUserEntityViewModel.getAllUsersAsList(new AllUsersCallback() {
+            @Override
+            public void onSuccess(List<UserEntity> users) {
+                updateUsers(users);
+            }
+        });
+
         Button mEmailSignInButton =  findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
+
                 attemptLogin();
+
             }
         });
 
@@ -143,9 +175,36 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(email, password);
-            mAuthTask.execute((Void) null);
+            if(networkConnection){
+
+                //TODO: get all users, check if this one is already in the room db, if not get size, use as id and add user
+                boolean userExistsInRoom = false;
+                for(UserEntity userEntity : currentUsers){
+                    if(userEntity.getUsername().equals(email))
+                        userExistsInRoom = true;
+                }
+
+                mAuthTask = new UserLoginTask(email, password, userExistsInRoom);
+                mAuthTask.execute((Void) null);
+            }else{
+                mAuthTaskWithoutInternet = new UserLoginTaskWithoutInternet(email, password);
+                mAuthTaskWithoutInternet.execute();
+            }
+
         }
+    }
+
+    public void updateUsers(List<UserEntity> users){
+        currentUsers = users;
+    }
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        }
+        return false;
     }
 
     private boolean isEmailValid(String email) {
@@ -254,10 +313,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         private final String mEmail;
         private final String mPassword;
+        private final boolean mUserExistsInRoom;
 
-        UserLoginTask(String email, String password) {
+        UserLoginTask(String email, String password, boolean userExistsInRoom) {
             mEmail = email;
             mPassword = password;
+            mUserExistsInRoom = userExistsInRoom;
         }
 
         @Override
@@ -266,6 +327,23 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             restController.checkIfUserExistsEmailOnly(mEmail, new GeneralCallback() {
                 @Override
                 public void onSuccess(JSONObject result) {
+                    if(!mUserExistsInRoom){
+                        String username = "";
+                        String password = "";
+                        int id = 0;
+                        try{
+                            username = result.getString("username");
+                            password = result.getString("password");
+                            id = result.getInt("userId");
+
+                        }catch(JSONException e){
+
+                        }
+                        Log.d("INFO", "inserting user into room");
+                        UserEntity userEntity = new UserEntity(id, username, password);
+                        mUserEntityViewModel.insert(userEntity);
+                    }
+
                     checkOnEmailAndPassWord(result);
                 }
 
@@ -275,11 +353,18 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         @Override
                         public void onSuccess(JSONObject result) {
                             String username = null;
+                            String password = "";
+                            int id = 0;
                             try{
                                 username = result.getString("username");
+                                password = result.getString("password");
+                                id = result.getInt("userId");
                             }catch(JSONException e){
 
                             }
+
+                            UserEntity userEntity = new UserEntity(id,username,password);
+                            mUserEntityViewModel.insert(userEntity);
                             registerUserOnFireBase(username);
                         }
 
@@ -325,17 +410,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
 
         private void sendToDashboard(String username, int id) {
-            FirebaseUser user = mAuth.getCurrentUser();
-            if(user.isEmailVerified()){
+            //FirebaseUser user = mAuth.getCurrentUser();
+            //if(user.isEmailVerified()){
                 Log.d("INFO", "FireBase Email VERIFIED");
                 Intent i = new Intent(LoginActivity.this, Dashboard.class);
                 UserEntity userEntity = new UserEntity(id, username, null);
                 i.putExtra("UserEntity", userEntity);
                 startActivity(i);
-            }else{
+            /*}else{
                 Toast.makeText(LoginActivity.this, "Please verify your email!",
                         Toast.LENGTH_LONG).show();
-            }
+            }*/
 
         }
 
@@ -370,6 +455,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             if (task.isSuccessful()) {
+                                System.out.println("TEST");
                                 // Sign in success, update UI with the signed-in user's information
                                 Log.d("INFO", "createUserWithEmail:success");
                                 final FirebaseUser user = mAuth.getCurrentUser();
@@ -379,6 +465,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                             public void onComplete(@NonNull Task task) {
 
                                                 if (task.isSuccessful()) {
+                                                    Log.e("INFO", "sendEmailVerification Successful");
                                                     Toast.makeText(LoginActivity.this,
                                                             "Verification email sent to " + user.getEmail(),
                                                             Toast.LENGTH_SHORT).show();
@@ -403,6 +490,89 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         }
                     });
         }
+
+        @Override
+        protected void onPostExecute(final Boolean success) {
+            mAuthTask = null;
+            showProgress(false);
+
+            if (success) {
+                finish();
+            } else {
+                mPasswordView.setError(getString(R.string.error_incorrect_password));
+                mPasswordView.requestFocus();
+            }
+        }
+
+        @Override
+        protected void onCancelled() {
+            mAuthTask = null;
+            showProgress(false);
+        }
+    }
+
+    public class UserLoginTaskWithoutInternet extends AsyncTask<Void, Void, Boolean> {
+
+        private final String mEmail;
+        private final String mPassword;
+
+        UserLoginTaskWithoutInternet(String email, String password) {
+            mEmail = email;
+            mPassword = password;
+        }
+
+        @Override
+        protected Boolean doInBackground(final Void... params) {
+            // check user against room database //todo add flag which contains if the email is verified or not to the DB
+            mUserEntityViewModel.getUserByName(mEmail, new UserCallback() {
+                @Override
+                public void onSuccess(UserEntity userEntity) {
+                    //first hash the password for matching purposes
+                    String password = "";
+                    try{
+                        MessageDigest md = MessageDigest.getInstance("SHA");
+                        // Change this to UTF-16 if needed
+                        md.update( mPassword.getBytes( StandardCharsets.UTF_8 ) );
+                        byte[] digest = md.digest();
+                        password= String.format( "%064x", new BigInteger( 1, digest ) );
+                    }catch(NoSuchAlgorithmException e){
+
+                    }
+                    if(userEntity != null){
+                        if(userEntity.getPassword().equals(password))
+                            sendToDashboard(userEntity.getUsername(), userEntity.getUserId());
+                        else{
+                            Toast.makeText(LoginActivity.this, "Credentials incorrect",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }else{
+                        Toast.makeText(LoginActivity.this, "Connect to internet!",
+                                Toast.LENGTH_LONG).show();
+                    }
+
+                }
+            });
+            return true;
+        }
+
+
+        private void sendToDashboard(String username, int id) {
+
+            // if statement which checks the email verified field in the db
+                Log.d("INFO", "FireBase Email VERIFIED");
+                Intent i = new Intent(LoginActivity.this, Dashboard.class);
+                UserEntity userEntity = new UserEntity(id, username, null);
+                i.putExtra("UserEntity", userEntity);
+                startActivity(i);
+            /*}else{
+                Toast.makeText(LoginActivity.this, "Please verify your email!",
+                        Toast.LENGTH_LONG).show();
+            }*/
+
+        }
+
+
+
 
         @Override
         protected void onPostExecute(final Boolean success) {

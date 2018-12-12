@@ -22,4 +22,10 @@ public interface UserEntityDAO {
 
     @Query("SELECT * FROM user WHERE userId = :userId")
     UserEntity getUserById(int userId);
+
+    @Query("SELECT * FROM user WHERE username = :username")
+    UserEntity getUserByName(String username);
+
+    @Query("SELECT * FROM user ORDER BY userId ASC")
+    List<UserEntity> getAllUsersAsList();
 }
