@@ -63,4 +63,15 @@ public class NewQuestion extends AppCompatActivity {
         intent.putExtra("UserEntity", userEntity);
         startActivity(intent);
     }
+
+    @Override
+    public void onStop(){
+        super.onStop();
+        // Method to stop the service
+
+        stopService(new Intent(getBaseContext(), ShakeService.class));
+
+        //startService(new Intent(this, ShakeService.class));
+
+    }
 }

@@ -26,22 +26,23 @@ import java.security.NoSuchAlgorithmException;
 public class RestController {
     private Context mContext;
     private RequestQueue requestQueue;
+    private final String serverIp = "http://10.110.146.46:8080";
 
 
-    public RestController(Context context){
+    public RestController(Context context) {
         this.mContext = context;
         //initialize request queue instance
         requestQueue = Volley.newRequestQueue(mContext);
     }
 
-    public void checkIfUserExistsEmailOnly(String email, final GeneralCallback generalCallback){
+    public void checkIfUserExistsEmailOnly(String email, final GeneralCallback generalCallback) {
 
 
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
         //initialize JsonObjectRequest
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.GET,
-                "http://10.0.2.2:8080/user/name/" + email,
+                serverIp + "/user/name/" + email,
                 null,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -50,9 +51,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         generalCallback.onFail();
                     }
                 }
@@ -64,29 +65,29 @@ public class RestController {
 
     public void checkIfUserExistsEmailAndPassword(String email, String password, final GeneralCallback generalCallback) {
 
-        try{
+        try {
             MessageDigest md = MessageDigest.getInstance("SHA");
             // Change this to UTF-16 if needed
-            md.update( password.getBytes( StandardCharsets.UTF_8 ) );
+            md.update(password.getBytes(StandardCharsets.UTF_8));
             byte[] digest = md.digest();
-            password= String.format( "%064x", new BigInteger( 1, digest ) );
-        }catch(NoSuchAlgorithmException e){
+            password = String.format("%064x", new BigInteger(1, digest));
+        } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
 
 
         JSONObject request = new JSONObject();
-        try{
+        try {
             request.put("username", email);
             request.put("password", password);
-        }catch (JSONException e){
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         Log.d("INFO:REQUEST", request.toString());
 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.POST,
-                "http://10.0.2.2:8080/user/name",
+                serverIp + "/user/name",
                 request,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -105,19 +106,19 @@ public class RestController {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public void registerNewUser(String email, final RegisterUserCallback registerUserCallback){
+    public void registerNewUser(String email, final RegisterUserCallback registerUserCallback) {
 
         JSONObject request = new JSONObject();
-        try{
-            request.put("username",email);
-        }catch(JSONException e){
+        try {
+            request.put("username", email);
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
         //initialize JsonObjectRequest
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.POST,
-                "http://10.0.2.2:8080/user",
+                serverIp + "/user",
                 request,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -126,9 +127,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error registering user");
                     }
@@ -139,30 +140,30 @@ public class RestController {
 
     }
 
-    public void registerNewUserEmailAndPassword(String email, String password, final GeneralCallback generalCallback){
-        try{
+    public void registerNewUserEmailAndPassword(String email, String password, final GeneralCallback generalCallback) {
+        try {
             MessageDigest md = MessageDigest.getInstance("SHA");
             // Change this to UTF-16 if needed
-            md.update( password.getBytes( StandardCharsets.UTF_8 ) );
+            md.update(password.getBytes(StandardCharsets.UTF_8));
             byte[] digest = md.digest();
-            password= String.format( "%064x", new BigInteger( 1, digest ) );
-        }catch(NoSuchAlgorithmException e){
+            password = String.format("%064x", new BigInteger(1, digest));
+        } catch (NoSuchAlgorithmException e) {
 
         }
 
         Log.d("INFO: REG", password);
         JSONObject request = new JSONObject();
-        try{
-            request.put("username",email);
+        try {
+            request.put("username", email);
             request.put("password", password);
-        }catch(JSONException e){
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
         //initialize JsonObjectRequest
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.POST,
-                "http://10.0.2.2:8080/user",
+                serverIp + "/user",
                 request,
                 new Response.Listener<JSONObject>() {
 
@@ -170,19 +171,19 @@ public class RestController {
 
                     @Override
                     public void onResponse(JSONObject response) {
-                        try{
+                        try {
                             password = response.getString("password");
-                        }catch(JSONException e){
+                        } catch (JSONException e) {
 
                         }
-                        Log.d("INFO after REG",password);
+                        Log.d("INFO after REG", password);
                         generalCallback.onSuccess(response);
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error registering user");
                     }
@@ -192,24 +193,24 @@ public class RestController {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public void addNewQuestion(String title, String description, UserEntity userEntity, final GeneralCallback generalCallback){
+    public void addNewQuestion(String title, String description, UserEntity userEntity, final GeneralCallback generalCallback) {
         JSONObject request = new JSONObject();
-        try{
-            request.put("questionTitle",title);
+        try {
+            request.put("questionTitle", title);
             request.put("questionDescription", description);
             JSONObject userEntityJson = new JSONObject();
             userEntityJson.put("userId", userEntity.getUserId());
             userEntityJson.put("username", userEntity.getUsername());
             userEntityJson.put("password", userEntity.getPassword());
             request.put("userEntity", userEntityJson);
-        }catch(JSONException e){
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
         //initialize JsonObjectRequest
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.POST,
-                "http://10.0.2.2:8080/question",
+                serverIp + "/question",
                 request,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -218,9 +219,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error adding question user");
                     }
@@ -230,11 +231,11 @@ public class RestController {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public void requestQuestions(final GeneralCallbackArray generalCallbackArray){
+    public void requestQuestions(final GeneralCallbackArray generalCallbackArray) {
         //initialize JsonObjectRequest
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(
                 Request.Method.GET,
-                "http://10.0.2.2:8080/question",
+                serverIp + "/question",
                 null,
                 new Response.Listener<JSONArray>() {
                     @Override
@@ -243,9 +244,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error adding question user");
                     }
@@ -255,11 +256,11 @@ public class RestController {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public void requestAnswers(int questionId, final GeneralCallbackArray generalCallbackArray){
+    public void requestAnswers(int questionId, final GeneralCallbackArray generalCallbackArray) {
         //initialize JsonObjectRequest
         JsonArrayRequest jsonObjectRequest = new JsonArrayRequest(
                 Request.Method.GET,
-                "http://10.0.2.2:8080/answer/question/" + String.valueOf(questionId),
+                serverIp + "/answer/question/" + String.valueOf(questionId),
                 null,
                 new Response.Listener<JSONArray>() {
                     @Override
@@ -268,9 +269,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error adding question user");
                     }
@@ -280,10 +281,10 @@ public class RestController {
         requestQueue.add(jsonObjectRequest);
     }
 
-    public void submitAnswer(String answer, QuestionEntity questionEntity, UserEntity userEntity, final GeneralCallback generalCallback){
+    public void submitAnswer(String answer, QuestionEntity questionEntity, UserEntity userEntity, final GeneralCallback generalCallback) {
         JSONObject request = new JSONObject();
-        try{
-            request.put("answerDescription",answer);
+        try {
+            request.put("answerDescription", answer);
 
             // create the question JSON and add parameters
             JSONObject questionObject = new JSONObject();
@@ -302,14 +303,14 @@ public class RestController {
             request.put("questionEntity", questionObject);
             request.put("userEntity", userObject);
             System.out.println(request.toString());
-        }catch(JSONException e){
+        } catch (JSONException e) {
             e.printStackTrace();
         }
         //https://android--examples.blogspot.com/2017/02/android-volley-json-object-request.html
         //initialize JsonObjectRequest
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
                 Request.Method.POST,
-                "http://10.0.2.2:8080/answer",
+                serverIp + "/answer",
                 request,
                 new Response.Listener<JSONObject>() {
                     @Override
@@ -318,9 +319,9 @@ public class RestController {
 
                     }
                 },
-                new Response.ErrorListener(){
+                new Response.ErrorListener() {
                     @Override
-                    public void onErrorResponse(VolleyError error){
+                    public void onErrorResponse(VolleyError error) {
                         error.printStackTrace();
                         System.out.println("Error adding question user");
                     }

@@ -21,6 +21,8 @@ public class ShakeService extends Service {
     private ShakeDetector mShaker;
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
+    /** indicates whether onRebind should be used */
+    boolean mAllowRebind;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -57,6 +59,23 @@ public class ShakeService extends Service {
         super.onStartCommand(intent, flags, startId);
 
         return START_STICKY;
+
+    }
+
+    @Override
+    public void onDestroy() {
+
+    }
+
+    /** Called when all clients have unbound with unbindService() */
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return mAllowRebind;
+    }
+
+    /** Called when a client is binding to the service with bindService()*/
+    @Override
+    public void onRebind(Intent intent) {
 
     }
 

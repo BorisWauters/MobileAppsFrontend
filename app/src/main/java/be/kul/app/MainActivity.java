@@ -244,6 +244,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onStop(){
         super.onStop();
+        // Method to stop the service
+
+        stopService(new Intent(getBaseContext(), ShakeService.class));
+
         //startService(new Intent(this, ShakeService.class));
 
     }
@@ -312,8 +316,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     String firstName = result.getString("username");
                     int id = Integer.parseInt(result.getString("userId"));
 
-                    signInOnFireBase(firstName);
-                    sendToDashboard(firstName, id);
+                    signInOnFireBase(firstName, id);
+                    //sendToDashboard(firstName, id);
                 } catch (JSONException e) {
 
                 }
@@ -379,8 +383,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     //mTextView.append("\n\n");
                     //updateUI(account);
                     Log.d("INFO", "Signing into firebase");
-                    signInOnFireBase(firstName);
-                    sendToDashboard(firstName, id);
+                    signInOnFireBase(firstName, id);
+
 
                 } catch (JSONException e) {
                     System.out.println("Error unmarshalling parameters");
@@ -419,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
-    private void signInOnFireBase(String email) {
+    private void signInOnFireBase(final String email, final int id) {
 
         final boolean res;
         mAuth.signInWithEmailAndPassword(email, email)
@@ -430,7 +434,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithEmail:success");
                             FirebaseUser user = mAuth.getCurrentUser();
-
+                            sendToDashboard(email, id);
 
                         } else {
                             // If sign in fails, display a message to the user.

@@ -330,4 +330,15 @@ public class Dashboard extends AppCompatActivity {
         return false;
     }
 
+    @Override
+    public void onStop(){
+        super.onStop();
+        // Method to stop the service
+
+        stopService(new Intent(getBaseContext(), ShakeService.class));
+
+        //startService(new Intent(this, ShakeService.class));
+
+    }
+
 }
