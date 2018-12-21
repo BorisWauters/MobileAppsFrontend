@@ -131,11 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
-
-
         startService(new Intent(this, ShakeService.class));
-
-
 
 
         /* Google stuff*/

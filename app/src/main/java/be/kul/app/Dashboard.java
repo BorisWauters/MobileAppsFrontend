@@ -1,5 +1,6 @@
 package be.kul.app;
 
+import android.annotation.SuppressLint;
 import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
@@ -74,7 +75,7 @@ public class Dashboard extends AppCompatActivity {
     private boolean networkConnection;
 
 
-
+    @SuppressLint("RestrictedApi")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -305,7 +306,6 @@ public class Dashboard extends AppCompatActivity {
             }
         });
     }
-
 
     private void addNewQuestionsToRoom(){
         // first delete previous saved questions
